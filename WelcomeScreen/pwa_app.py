@@ -18,7 +18,7 @@ NEWS_SOURCES = [
 ]
 
 ANALYSIS_SOURCES = [
-    {"name": "ISW ئانالىز مەركىزى", "url": "https://www.understandingwar.org/rss.xml"},
+    {"name": "ISW تەتقىقات مەركىزى", "url": "https://www.understandingwar.org/rss.xml"},
     {"name": "فوكۇس ئوداك", "url": "https://www.fokusplus.com/rss"}
 ]
 
@@ -68,7 +68,7 @@ def classify(text):
         return "شەرقىي تۈركىستان"
     elif any(w in t for w in ["بۇغۇز", "ھورمۇز", "تەيۋەن", "مالاككا", "strait", "hormuz", "taiwan", "malacca"]):
         return "بۇغۇزلار"
-    return "ئومۇمىي خەۋەرلەر"
+    return "ئومۇمىي"
 
 def fetch_feed(sources):
     items = []
@@ -100,7 +100,8 @@ def fetch_feed(sources):
                     "desc": tr_desc,
                     "category": classify(raw_title + " " + tr_title),
                     "image": img_url,
-                    "link": getattr(entry, "link", "")
+                    "link": getattr(entry, "link", ""),
+                    "published": getattr(entry, "published", "يېڭى")[:16]
                 })
         except Exception as e:
             print("RSS خاتالىقى:", e)
@@ -118,12 +119,12 @@ threading.Thread(target=update_loop, daemon=True).start()
 @app.route('/manifest.json')
 def manifest():
     manifest_data = {
-        "name": "ئۇيغۇرچە خەۋەر ۋە تەھلىل",
-        "short_name": "خەۋەرلەر",
+        "name": "NEXUS • خەۋەر & ئانالىز",
+        "short_name": "NEXUS",
         "start_url": "/",
         "display": "standalone",
-        "background_color": "#0F172A",
-        "theme_color": "#1E293B",
+        "background_color": "#0B0F17",
+        "theme_color": "#0B0F17",
         "orientation": "portrait"
     }
     return Response(json.dumps(manifest_data, ensure_ascii=False), mimetype='application/json')
@@ -154,7 +155,7 @@ def get_article():
             if not is_uy: time.sleep(0.1)
         return jsonify({"content": "\n\n".join(translated)})
     except Exception as e:
-        return jsonify({"content": f"مەزمۇننى تارتىشتا مەسىلە كۆرۈلدى: {e}"})
+        return jsonify({"content": f"تېكىستنى تارتىشتا كاشىلا كۆرۈلدى: {e}"})
 
 @app.route("/")
 def index():
@@ -163,8 +164,8 @@ def index():
     <html lang="ug" dir="rtl">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <title>دۇنيا خەۋەرلىرى ۋە ئانالىز</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+        <title>NEXUS • خەۋەر ۋە تەھلىل</title>
         <link rel="manifest" href="/manifest.json">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -174,254 +175,523 @@ def index():
                 src: local('UKIJ Ekran');
             }
             :root {
-                --bg: #F8FAFC;
-                --card-bg: #FFFFFF;
-                --text: #0F172A;
-                --text-muted: #64748B;
-                --border: #E2E8F0;
-                --primary: #2563EB;
-                --primary-soft: #EFF6FF;
-                --badge-bg: #F1F5F9;
-                --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+                --bg: #0B0F17;
+                --surface: rgba(22, 30, 46, 0.7);
+                --surface-hover: rgba(30, 41, 59, 0.85);
+                --border: rgba(255, 255, 255, 0.08);
+                --accent: #38BDF8;
+                --accent-gradient: linear-gradient(135deg, #38BDF8 0%, #6366F1 100%);
+                --text-main: #F8FAFC;
+                --text-sub: #94A3B8;
+                --card-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+                --blur: blur(20px);
             }
-            [data-theme="dark"] {
-                --bg: #090D16;
-                --card-bg: #131B2E;
-                --text: #F1F5F9;
-                --text-muted: #94A3B8;
-                --border: #1E293B;
-                --primary: #3B82F6;
-                --primary-soft: #1E293B;
-                --badge-bg: #1E293B;
-                --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3);
+            [data-theme="light"] {
+                --bg: #F1F5F9;
+                --surface: rgba(255, 255, 255, 0.85);
+                --surface-hover: rgba(255, 255, 255, 0.95);
+                --border: rgba(0, 0, 0, 0.08);
+                --accent: #0284C7;
+                --accent-gradient: linear-gradient(135deg, #0284C7 0%, #4F46E5 100%);
+                --text-main: #0F172A;
+                --text-sub: #64748B;
+                --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.06);
             }
-            * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'UKIJ Ekran', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; transition: background-color 0.25s ease, color 0.25s ease; }
-            body { background: var(--bg); color: var(--text); padding-bottom: 85px; -webkit-tap-highlight-color: transparent; }
-            
-            /* ئۈستۈنكى بۆلەك */
+
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+                font-family: 'UKIJ Ekran', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                -webkit-tap-highlight-color: transparent;
+            }
+
+            body {
+                background: var(--bg);
+                color: var(--text-main);
+                padding-bottom: 95px;
+                min-height: 100vh;
+                transition: background 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+
+            /* ئۈستۈنكى ئالىي بۆلەك */
             header {
-                position: sticky; top: 0; background: var(--card-bg);
-                padding: 12px 16px; border-bottom: 1px solid var(--border);
-                z-index: 20; box-shadow: var(--shadow);
-                display: flex; gap: 10px; align-items: center;
+                position: sticky;
+                top: 0;
+                background: var(--surface);
+                backdrop-filter: var(--blur);
+                -webkit-backdrop-filter: var(--blur);
+                border-bottom: 1px solid var(--border);
+                padding: 12px 18px;
+                z-index: 50;
             }
-            .search-box {
-                flex: 1; padding: 10px 18px; border-radius: 25px;
-                border: 1px solid var(--border); background: var(--bg);
-                color: var(--text); font-size: 14px; outline: none;
+            .header-top {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 12px;
             }
-            .theme-toggle {
-                background: var(--bg); border: 1px solid var(--border);
-                border-radius: 50%; width: 40px; height: 40px;
-                display: flex; align-items: center; justify-content: center;
-                cursor: pointer; font-size: 18px;
+            .app-brand {
+                font-size: 20px;
+                font-weight: 900;
+                letter-spacing: 0.5px;
+                background: var(--accent-gradient);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+            .brand-sub {
+                font-size: 11px;
+                color: var(--text-sub);
+                font-weight: normal;
+                margin-right: 6px;
+            }
+            .theme-pill {
+                background: var(--surface-hover);
+                border: 1px solid var(--border);
+                padding: 6px 14px;
+                border-radius: 20px;
+                cursor: pointer;
+                font-size: 13px;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                color: var(--text-main);
             }
 
-            .container { padding: 16px; max-width: 600px; margin: 0 auto; }
+            .search-bar {
+                display: flex;
+                align-items: center;
+                background: var(--surface-hover);
+                border: 1px solid var(--border);
+                border-radius: 16px;
+                padding: 0 14px;
+            }
+            .search-bar input {
+                flex: 1;
+                background: none;
+                border: none;
+                padding: 10px 0;
+                font-size: 14px;
+                color: var(--text-main);
+                outline: none;
+            }
 
-            /* كاتېگورىيە كارتىلىرى */
-            .cat-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 6px; }
-            .cat-card {
-                background: var(--card-bg); border-radius: 16px;
-                padding: 18px; border: 1px solid var(--border);
-                box-shadow: var(--shadow); cursor: pointer;
-                display: flex; align-items: center; justify-content: space-between;
+            /* تۈر تاللاش سىيرىلما بەلبېغى (Pill Tabs) */
+            .tabs-scroll {
+                display: flex;
+                gap: 8px;
+                overflow-x: auto;
+                padding: 14px 18px 6px;
+                scrollbar-width: none;
             }
-            .cat-card:active { transform: scale(0.98); }
-            .cat-card h3 { font-size: 16px; color: var(--text); display: flex; align-items: center; gap: 10px; }
-            .cat-card p { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
-            .cat-arrow { font-size: 18px; color: var(--primary); }
+            .tabs-scroll::-webkit-scrollbar { display: none; }
+            .pill-tab {
+                white-space: nowrap;
+                padding: 8px 18px;
+                border-radius: 25px;
+                background: var(--surface);
+                border: 1px solid var(--border);
+                color: var(--text-sub);
+                font-size: 13px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.25s ease;
+            }
+            .pill-tab.active {
+                background: var(--accent-gradient);
+                color: #FFFFFF;
+                border-color: transparent;
+                box-shadow: 0 4px 15px rgba(56, 189, 248, 0.35);
+                transform: translateY(-1px);
+            }
 
-            /* خەۋەر كارتىلىرى */
-            .news-card {
-                background: var(--card-bg); border-radius: 18px;
-                padding: 14px; margin-bottom: 14px; border: 1px solid var(--border);
-                box-shadow: var(--shadow); overflow: hidden;
+            .container {
+                padding: 12px 18px;
+                max-width: 650px;
+                margin: 0 auto;
             }
-            .news-card img {
-                width: 100%; height: 180px; object-fit: cover;
-                border-radius: 12px; margin-bottom: 12px; background: var(--border);
-            }
-            .title-box { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-            .news-card h4 {
-                font-size: 16px; font-weight: bold; line-height: 1.5;
-                color: var(--text); cursor: pointer; flex: 1;
-            }
-            .news-card p {
-                font-size: 13px; color: var(--text-muted);
-                margin: 8px 0; line-height: 1.6; cursor: pointer;
-            }
-            .meta-bar {
-                display: flex; align-items: center; justify-content: space-between;
-                margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
-            }
-            .badge-group { display: flex; gap: 6px; }
-            .badge {
-                font-size: 11px; padding: 4px 10px; border-radius: 20px;
-                background: var(--badge-bg); color: var(--text-muted); font-weight: 500;
-            }
-            .badge.src { color: var(--primary); background: var(--primary-soft); font-weight: bold; }
-            .star-btn {
-                background: none; border: none; font-size: 22px;
-                color: var(--border); cursor: pointer; padding: 4px;
-            }
-            .star-btn.fav { color: #EAB308; }
 
-            /* تەپسىلات كۆزنىكى */
-            #detail-view {
-                display: none; background: var(--card-bg); min-height: 100vh;
-                padding: 20px 16px; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-                z-index: 100; overflow-y: auto;
+            /* چوڭ قىزىق نۇقتا كارتىسى (Hero / Spotlight Card) */
+            .hero-card {
+                position: relative;
+                border-radius: 24px;
+                overflow: hidden;
+                margin-bottom: 20px;
+                border: 1px solid var(--border);
+                box-shadow: var(--card-shadow);
+                cursor: pointer;
+                background: var(--surface);
             }
-            .back-btn {
-                background: var(--primary-soft); color: var(--primary);
-                border: none; padding: 8px 20px; border-radius: 20px;
-                font-size: 14px; font-weight: bold; cursor: pointer; margin-bottom: 14px;
+            .hero-img {
+                width: 100%;
+                height: 230px;
+                object-fit: cover;
+                display: block;
             }
-            #detail-title { font-size: 20px; line-height: 1.5; color: var(--text); margin: 10px 0; }
-            #detail-body { font-size: 16px; line-height: 2; color: var(--text); margin-top: 16px; white-space: pre-line; }
+            .hero-overlay {
+                position: absolute;
+                inset: 0;
+                background: linear-gradient(180deg, rgba(0,0,0,0.1) 20%, rgba(11,15,23,0.92) 100%);
+                display: flex;
+                flex-direction: column;
+                justify-content: flex-end;
+                padding: 20px;
+            }
+            .hero-tag {
+                align-self: flex-start;
+                background: var(--accent);
+                color: #fff;
+                font-size: 10px;
+                font-weight: 800;
+                padding: 4px 10px;
+                border-radius: 8px;
+                text-transform: uppercase;
+                margin-bottom: 8px;
+                letter-spacing: 0.5px;
+            }
+            .hero-title {
+                color: #FFFFFF;
+                font-size: 18px;
+                font-weight: bold;
+                line-height: 1.5;
+            }
 
-            /* ئاستىنقى يول باشلاش */
+            /* ئۆلچەملىك خەۋەر كارتىسى */
+            .bento-card {
+                background: var(--surface);
+                backdrop-filter: var(--blur);
+                -webkit-backdrop-filter: var(--blur);
+                border: 1px solid var(--border);
+                border-radius: 20px;
+                padding: 14px;
+                margin-bottom: 14px;
+                box-shadow: var(--card-shadow);
+                display: flex;
+                gap: 14px;
+                cursor: pointer;
+                transition: transform 0.2s ease, border-color 0.2s ease;
+            }
+            .bento-card:active {
+                transform: scale(0.985);
+            }
+            .bento-thumb {
+                width: 105px;
+                height: 105px;
+                border-radius: 14px;
+                object-fit: cover;
+                background: var(--surface-hover);
+                flex-shrink: 0;
+            }
+            .bento-info {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+            }
+            .bento-meta {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 6px;
+            }
+            .source-tag {
+                font-size: 11px;
+                font-weight: bold;
+                color: var(--accent);
+            }
+            .cat-tag {
+                font-size: 10px;
+                background: var(--surface-hover);
+                padding: 3px 8px;
+                border-radius: 12px;
+                color: var(--text-sub);
+                border: 1px solid var(--border);
+            }
+            .bento-title {
+                font-size: 14.5px;
+                line-height: 1.45;
+                font-weight: bold;
+                color: var(--text-main);
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+            }
+            .bento-footer {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-top: 8px;
+            }
+            .time-txt {
+                font-size: 11px;
+                color: var(--text-sub);
+            }
+            .star-icon {
+                font-size: 19px;
+                color: var(--border);
+                border: none;
+                background: none;
+                cursor: pointer;
+            }
+            .star-icon.active {
+                color: #FBBF24;
+            }
+
+            /* تولۇق تېكىست ئوقۇش بېتى (Editorial Reader) */
+            #detail-modal {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: var(--bg);
+                z-index: 100;
+                overflow-y: auto;
+                padding-bottom: 60px;
+            }
+            .reader-header {
+                position: sticky;
+                top: 0;
+                background: var(--surface);
+                backdrop-filter: var(--blur);
+                padding: 12px 18px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                border-bottom: 1px solid var(--border);
+                z-index: 10;
+            }
+            .close-pill {
+                background: var(--surface-hover);
+                color: var(--text-main);
+                border: 1px solid var(--border);
+                padding: 6px 16px;
+                border-radius: 20px;
+                font-size: 13px;
+                font-weight: bold;
+                cursor: pointer;
+            }
+            .reader-content {
+                max-width: 650px;
+                margin: 0 auto;
+                padding: 18px;
+            }
+            .reader-img {
+                width: 100%;
+                border-radius: 20px;
+                margin-bottom: 16px;
+                box-shadow: var(--card-shadow);
+            }
+            .reader-title {
+                font-size: 21px;
+                line-height: 1.5;
+                font-weight: 900;
+                color: var(--text-main);
+                margin-bottom: 14px;
+            }
+            .reader-body {
+                font-size: 16.5px;
+                line-height: 2.1;
+                color: var(--text-main);
+                opacity: 0.92;
+                white-space: pre-line;
+            }
+
+            /* يېڭى ئەۋلاد لەيلىمە كۆرۈنمە يول باشلاش تاختىسى (Floating Dock) */
             nav {
-                position: fixed; bottom: 0; left: 0; right: 0; height: 68px;
-                background: var(--card-bg); border-top: 1px solid var(--border);
-                display: flex; justify-content: space-around; align-items: center;
-                z-index: 30; box-shadow: 0 -4px 15px rgba(0,0,0,0.04);
+                position: fixed;
+                bottom: 16px;
+                left: 20px;
+                right: 20px;
+                max-width: 450px;
+                margin: 0 auto;
+                height: 64px;
+                background: var(--surface);
+                backdrop-filter: var(--blur);
+                -webkit-backdrop-filter: var(--blur);
+                border: 1px solid var(--border);
+                border-radius: 35px;
+                display: flex;
+                justify-content: space-around;
+                align-items: center;
+                z-index: 60;
+                box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
             }
-            .nav-item {
-                background: none; border: none; text-align: center;
-                color: var(--text-muted); font-size: 11px; cursor: pointer;
-                display: flex; flex-direction: column; align-items: center; gap: 3px;
+            .dock-btn {
+                background: none;
+                border: none;
+                color: var(--text-sub);
+                font-size: 11px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 3px;
+                cursor: pointer;
+                transition: color 0.2s ease, transform 0.2s ease;
             }
-            .nav-item span { font-size: 20px; }
-            .nav-item.active { color: var(--primary); font-weight: bold; }
+            .dock-btn span { font-size: 20px; }
+            .dock-btn.active {
+                color: var(--accent);
+                font-weight: bold;
+                transform: translateY(-2px);
+            }
         </style>
     </head>
     <body>
+
+        <!-- ئەپنىڭ ئۈستى باش قىسمى -->
         <header>
-            <input type="text" id="search" class="search-box" placeholder="🔍 ئىزدەش..." oninput="onSearch()">
-            <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn">🌙</button>
+            <div class="header-top">
+                <div>
+                    <span class="app-brand">NEXUS</span>
+                    <span class="brand-sub">تەھلىل ۋە خەۋەر</span>
+                </div>
+                <button class="theme-pill" onclick="toggleTheme()" id="theme-btn">
+                    <span id="theme-icon">🌙</span> <span id="theme-text">كېچە</span>
+                </button>
+            </div>
+            <div class="search-bar">
+                <input type="text" id="search" placeholder="دۇنياۋى تېمىلارنى ئىزدىڭ..." oninput="onSearch()">
+            </div>
         </header>
 
-        <div class="container" id="main-content">
-            <div id="home-view">
-                <div class="cat-grid">
-                    <div class="cat-card" onclick="openCategory('ئوتتۇرا شەرق')">
-                        <div><h3>🌍 ئوتتۇرا شەرق</h3><p>ئىسرائىلىيە، ئىران، سۈرىيە، غەززە تەھلىللىرى</p></div>
-                        <div class="cat-arrow">←</div>
-                    </div>
-                    <div class="cat-card" onclick="openCategory('ئوتتۇرا ئاسىيا')">
-                        <div><h3>🏔️ ئوتتۇرا ئاسىيا</h3><p>قازاقىستان، ئۆزبېكىستان ۋە قىرغىزىستان خەۋەرلىرى</p></div>
-                        <div class="cat-arrow">←</div>
-                    </div>
-                    <div class="cat-card" onclick="openCategory('خىتاي')">
-                        <div><h3>🌐 خىتاي سىياسىتى</h3><p>بېيجىڭ سىياسىتى ۋە ئىقتىسادىي ئۆزگىرىشلەر</p></div>
-                        <div class="cat-arrow">←</div>
-                    </div>
-                    <div class="cat-card" onclick="openCategory('شەرقىي تۈركىستان')">
-                        <div><h3>🌙 شەرقىي تۈركىستان</h3><p>ۋەتەن خەۋەرلىرى ۋە ئەڭ يېڭى ھادىسىلەر</p></div>
-                        <div class="cat-arrow">←</div>
-                    </div>
-                    <div class="cat-card" onclick="openCategory('بۇغۇزلار')">
-                        <div><h3>⚓ ئىستراتېگىيىلىك بۇغۇزلار</h3><p>ھورمۇز، مالاككا ۋە تەيۋەن بوغۇزى ۋەزىيىتى</p></div>
-                        <div class="cat-arrow">←</div>
-                    </div>
-                </div>
+        <!-- يانتۇ سۈرۈلمە تۈر تۈگمىلىرى -->
+        <div class="tabs-scroll" id="cat-tabs">
+            <button class="pill-tab active" onclick="filterCategory('ھەممىسى')">بارلىق خەۋەرلەر</button>
+            <button class="pill-tab" onclick="filterCategory('ئوتتۇرا شەرق')">🌍 ئوتتۇرا شەرق</button>
+            <button class="pill-tab" onclick="filterCategory('شەرقىي تۈركىستان')">🌙 شەرقىي تۈركىستان</button>
+            <button class="pill-tab" onclick="filterCategory('ئوتتۇرا ئاسىيا')">🏔️ ئوتتۇرا ئاسىيا</button>
+            <button class="pill-tab" onclick="filterCategory('خىتاي')">🌐 خىتاي</button>
+            <button class="pill-tab" onclick="filterCategory('بۇغۇزلار')">⚓ بۇغۇزلار</button>
+        </div>
+
+        <div class="container" id="feed-container">
+            <div id="hero-area"></div>
+            <div id="cards-list"></div>
+        </div>
+
+        <!-- ژۇرنال ئۇسلۇبىدىكى ئوقۇش كۆزنىكى -->
+        <div id="detail-modal">
+            <div class="reader-header">
+                <button class="close-pill" onclick="closeDetail()">✕ تاقاش</button>
+                <div id="reader-source" style="font-size:12px; font-weight:bold; color:var(--accent);"></div>
             </div>
-            <div id="list-view" style="display:none;"></div>
+            <div class="reader-content">
+                <img id="reader-img" class="reader-img" style="display:none;">
+                <h1 id="reader-title" class="reader-title"></h1>
+                <div id="reader-body" class="reader-body"></div>
+            </div>
         </div>
 
-        <div id="detail-view">
-            <button class="back-btn" onclick="closeDetail()">← كەينىگە قايتىش</button>
-            <img id="detail-img" style="width:100%; border-radius:14px; display:none; margin-bottom:12px;">
-            <h2 id="detail-title"></h2>
-            <div id="detail-meta" class="badge-group" style="margin-bottom:14px;"></div>
-            <div id="detail-body"></div>
-        </div>
-
+        <!-- لەيلىمە زامانىۋى نۇسخىدىكى يول باشلاش تاختىسى (Floating Dock) -->
         <nav>
-            <button class="nav-item active" onclick="switchTab('home')"><span>🏠</span>باشبەت</button>
-            <button class="nav-item" onclick="switchTab('news')"><span>📰</span>خەۋەرلەر</button>
-            <button class="nav-item" onclick="switchTab('analysis')"><span>📊</span>ئانالىزلار</button>
-            <button class="nav-item" onclick="switchTab('fav')"><span>⭐</span>ساقلانغان</button>
+            <button class="dock-btn active" onclick="switchMainTab('all')"><span>⚡</span>يېڭى</button>
+            <button class="dock-btn" onclick="switchMainTab('analysis')"><span>📊</span>ئانالىز</button>
+            <button class="dock-btn" onclick="switchMainTab('fav')"><span>⭐</span>ساقلانغان</button>
         </nav>
 
         <script>
-            let newsData = [], analysisData = [], currentDisplay = [];
-            let favorites = JSON.parse(localStorage.getItem('favs') || '[]');
+            let newsData = [], analysisData = [], activeCategory = 'ھەممىسى', currentTab = 'all';
+            let favorites = JSON.parse(localStorage.getItem('nexus_favs') || '[]');
 
             function toggleTheme() {
                 let current = document.documentElement.getAttribute('data-theme');
-                let next = current === 'dark' ? 'light' : 'dark';
+                let next = current === 'light' ? 'dark' : 'light';
                 document.documentElement.setAttribute('data-theme', next);
-                document.getElementById('theme-btn').innerText = next === 'dark' ? '☀️' : '🌙';
-                localStorage.setItem('theme', next);
+                document.getElementById('theme-icon').innerText = next === 'light' ? '☀️' : '🌙';
+                document.getElementById('theme-text').innerText = next === 'light' ? 'كۈندۈز' : 'كېچە';
+                localStorage.setItem('nexus_theme', next);
             }
-            if(localStorage.getItem('theme') === 'dark') toggleTheme();
+            if(localStorage.getItem('nexus_theme') === 'light') toggleTheme();
 
             async function loadData() {
                 try {
                     let res = await fetch('/api/data');
                     let d = await res.json();
-                    newsData = d.news; analysisData = d.analyses;
-                    if(document.getElementById('list-view').style.display === 'block') {
-                        renderList(currentDisplay);
-                    }
+                    newsData = d.news;
+                    analysisData = d.analyses;
+                    render();
                 } catch(e){}
             }
             loadData();
             setInterval(loadData, 60000);
 
-            function switchTab(tab) {
-                document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            function filterCategory(cat) {
+                activeCategory = cat;
+                document.querySelectorAll('.pill-tab').forEach(b => {
+                    b.classList.toggle('active', b.innerText.includes(cat) || (cat==='ھەممىسى' && b.innerText==='بارلىق خەۋەرلەر'));
+                });
+                render();
+            }
+
+            function switchMainTab(tab) {
+                currentTab = tab;
+                document.querySelectorAll('.dock-btn').forEach(b => b.classList.remove('active'));
                 event.currentTarget.classList.add('active');
-                let h = document.getElementById('home-view');
-                let l = document.getElementById('list-view');
+                render();
+            }
 
-                if(tab === 'home') {
-                    h.style.display = 'block'; l.style.display = 'none';
-                } else if(tab === 'news') {
-                    h.style.display = 'none'; l.style.display = 'block';
-                    currentDisplay = newsData; renderList(currentDisplay);
-                } else if(tab === 'analysis') {
-                    h.style.display = 'none'; l.style.display = 'block';
-                    currentDisplay = analysisData; renderList(currentDisplay);
-                } else if(tab === 'fav') {
-                    h.style.display = 'none'; l.style.display = 'block';
-                    currentDisplay = favorites; renderList(currentDisplay);
+            function getActiveList() {
+                let pool = [];
+                if(currentTab === 'all') pool = newsData;
+                else if(currentTab === 'analysis') pool = analysisData;
+                else if(currentTab === 'fav') pool = favorites;
+
+                if(activeCategory !== 'ھەممىسى') {
+                    pool = pool.filter(i => (i.category || '').includes(activeCategory));
                 }
+                let q = document.getElementById('search').value.toLowerCase().trim();
+                if(q) {
+                    pool = pool.filter(i => i.title.toLowerCase().includes(q) || i.desc.toLowerCase().includes(q));
+                }
+                return pool;
             }
 
-            function openCategory(cat) {
-                document.getElementById('home-view').style.display = 'none';
-                document.getElementById('list-view').style.display = 'block';
-                let all = [...newsData, ...analysisData];
-                currentDisplay = all.filter(i => (i.category||'').includes(cat));
-                renderList(currentDisplay.length ? currentDisplay : all);
-            }
+            function render() {
+                let list = getActiveList();
+                let heroArea = document.getElementById('hero-area');
+                let listArea = document.getElementById('cards-list');
 
-            function renderList(items) {
-                let l = document.getElementById('list-view');
-                if(!items.length) {
-                    l.innerHTML = "<div style='text-align:center; color:var(--text-muted); margin-top:50px; font-size:14px;'>⏳ مەزمۇنلار تەرجىمە قىلىنىپ رەتلىنىۋاتىدۇ، سەل كۈتۈڭ...</div>";
+                if(!list.length) {
+                    heroArea.innerHTML = '';
+                    listArea.innerHTML = "<div style='text-align:center; padding:60px 0; color:var(--text-sub); font-size:14px;'>⏳ مەزمۇنلار تەرجىمە قىلىنماقتا...</div>";
                     return;
                 }
-                l.innerHTML = items.map(item => {
+
+                // قىزىق نۇقتا (Spotlight Card)
+                let first = list[0];
+                if(first && first.image && currentTab !== 'fav') {
+                    heroArea.innerHTML = `
+                    <div class="hero-card" onclick='openArticle(${JSON.stringify(first)})'>
+                        <img class="hero-img" src="${first.image}" loading="lazy">
+                        <div class="hero-overlay">
+                            <span class="hero-tag">🔥 ئەڭ يېڭى فوكۇس</span>
+                            <h2 class="hero-title">${first.title}</h2>
+                        </div>
+                    </div>`;
+                    list = list.slice(1);
+                } else {
+                    heroArea.innerHTML = '';
+                }
+
+                // زامانىۋى Bento كارتىلىرى
+                listArea.innerHTML = list.map(item => {
                     let isFav = favorites.some(f => f.title === item.title);
                     return `
-                    <div class="news-card">
-                        ${item.image ? `<img src="${item.image}" loading="lazy">` : ''}
-                        <div class="title-box">
-                            <h4 onclick='openDetail(${JSON.stringify(item)})'>${item.title}</h4>
-                            <button class="star-btn ${isFav?'fav':''}" onclick='toggleFav(${JSON.stringify(item)})'>${isFav?'★':'☆'}</button>
-                        </div>
-                        <p onclick='openDetail(${JSON.stringify(item)})'>${item.desc.substring(0, 110)}...</p>
-                        <div class="meta-bar">
-                            <div class="badge-group">
-                                <span class="badge src">${item.source}</span>
-                                <span class="badge">${item.category}</span>
+                    <div class="bento-card">
+                        <div class="bento-info" onclick='openArticle(${JSON.stringify(item)})'>
+                            <div>
+                                <div class="bento-meta">
+                                    <span class="source-tag">${item.source}</span>
+                                    <span class="cat-tag">${item.category}</span>
+                                </div>
+                                <h3 class="bento-title">${item.title}</h3>
+                            </div>
+                            <div class="bento-footer">
+                                <span class="time-txt">${item.published || 'ھازىرلا'}</span>
+                                <button class="star-icon ${isFav?'active':''}" onclick='event.stopPropagation(); toggleFav(${JSON.stringify(item)})'>${isFav?'★':'☆'}</button>
                             </div>
                         </div>
+                        ${item.image ? `<img class="bento-thumb" src="${item.image}" loading="lazy" onclick='openArticle(${JSON.stringify(item)})'>` : ''}
                     </div>`;
                 }).join('');
             }
@@ -430,37 +700,35 @@ def index():
                 let idx = favorites.findIndex(f => f.title === item.title);
                 if(idx > -1) favorites.splice(idx, 1);
                 else favorites.push(item);
-                localStorage.setItem('favs', JSON.stringify(favorites));
-                renderList(currentDisplay);
+                localStorage.setItem('nexus_favs', JSON.stringify(favorites));
+                render();
             }
 
-            async function openDetail(item) {
-                let d = document.getElementById('detail-view');
-                document.getElementById('detail-title').innerText = item.title;
-                document.getElementById('detail-meta').innerHTML = `
-                    <span class="badge src">${item.source}</span>
-                    <span class="badge">${item.category}</span>
-                `;
-                let img = document.getElementById('detail-img');
-                if(item.image) { img.src = item.image; img.style.display = 'block'; }
-                else { img.style.display = 'none'; }
-                
-                document.getElementById('detail-body').innerText = "⏳ تولۇق تېكىست مەنبەدىن تارتىلىپ ئۇيغۇرچىغا تەرجىمە قىلىنماقتا...";
-                d.style.display = 'block';
+            async function openArticle(item) {
+                let m = document.getElementById('detail-modal');
+                document.getElementById('reader-source').innerText = item.source + " • " + item.category;
+                document.getElementById('reader-title').innerText = item.title;
+                let img = document.getElementById('reader-img');
+                if(item.image) {
+                    img.src = item.image;
+                    img.style.display = 'block';
+                } else {
+                    img.style.display = 'none';
+                }
+                document.getElementById('reader-body').innerText = "⏳ خەۋەرنىڭ ئەسلى مەنبەسىدىن تولۇق تېكىست چۈشۈرۈلۈپ ئۇيغۇرچىغا تەرجىمە قىلىنماقتا، سەل كۈتۈڭ...";
+                m.style.display = 'block';
 
                 let res = await fetch(`/api/article?link=${encodeURIComponent(item.link)}&source=${encodeURIComponent(item.source)}`);
-                let data = await res.json();
-                document.getElementById('detail-body').innerText = data.content;
+                let d = await res.json();
+                document.getElementById('reader-body').innerText = d.content;
             }
 
             function closeDetail() {
-                document.getElementById('detail-view').style.display = 'none';
+                document.getElementById('detail-modal').style.display = 'none';
             }
 
             function onSearch() {
-                let q = document.getElementById('search').value.toLowerCase();
-                let filtered = currentDisplay.filter(i => i.title.toLowerCase().includes(q) || i.desc.toLowerCase().includes(q));
-                renderList(filtered);
+                render();
             }
         </script>
     </body>
